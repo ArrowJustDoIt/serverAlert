@@ -3,6 +3,9 @@
 // | serverAlert 微信逻辑核心类
 // +----------------------------------------------------------------------
 class weChatCore {
+    const TEMPMSGAPI        = 'https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=';  //模板消息api
+    const QRCODETICKETAPI   = 'https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=';          //场景二维码获取ticket api
+    const QRCODEIMGAPI      = 'https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=';                    //ticket换取二维码API
 	private $appId;
 	private $appSecret;
     private $config;
@@ -12,6 +15,10 @@ class weChatCore {
 		$this->appSecret= $config['wxappsecret'];
 	}
 
+    /**
+     * @desc 签名
+     * @return array
+     */
   	public function getSignPackage() {
     	$jsapiTicket = $this->getJsApiTicket();
 	    // 注意 URL 一定要动态获取，不能 hardcode.
@@ -87,6 +94,11 @@ class weChatCore {
 	    return $access_token;
 	}
 
+    /**
+     * @desc 发送模板消息
+     * @param $openid  接收用户的openid
+     * @param $content 模板消息内容
+     */
     public function sendTempMsg($openid,$content){
         $access_token = $this->getAccessToken();
         $post_data = '{
@@ -100,7 +112,34 @@ class weChatCore {
                 }
             }
         }';
-        $this->httpGet("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=$access_token",$post_data);
+        $this->httpGet(self::TEMPMSGAPI . $access_token,$post_data);
+    }
+
+    /**
+     * @desc 获取二维码图片
+     */
+    public function getQrcodeImg(){
+        $qrcodeTicketJson = $this->getQrcodeTicket();
+        $qrcodeTicket = json_decode($qrcodeTicketJson,true);
+        echo '<img src="' . self::QRCODEIMGAPI . UrlEncode($qrcodeTicket['ticket']) . '"/>';
+    }
+
+    /**
+     * @desc 获取场景二维码ticket
+     * @return mixed
+     */
+    private function getQrcodeTicket(){
+        $access_token = $this->getAccessToken();
+        $post_data = '{
+            "expire_seconds": 3600,
+            "action_name": "QR_SCENE", 
+            "action_info": {
+                "scene": {
+                    "scene_id": 123
+                }
+            }
+        }';
+        return $this->httpGet(self::QRCODETICKETAPI . $access_token,$post_data);
     }
 
   	private function httpGet($url,$post_data = '') {

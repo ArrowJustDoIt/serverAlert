@@ -64,22 +64,49 @@ class wechatCallbackapi{
         switch ($object->Event)
         {
             case "subscribe":
-                //插入数据
-                $arr = array(
-                    'openid'        => $object->FromUserName,
-                    'create_time'   => time(),
-                );
-                $res = $this->conn->insert('serverAlert',$arr);
-                if($res){
-                    //入库成功
-                    $content = "微信绑定成功!";
-                }else{
-                    //入库失败
-                    $content = "微信绑定失败,请取消关注后重试或联系管理员!";
+                //扫描场景二维码进入
+                if ($object->EventKey == 'qrscene_123'){
+                    //插入数据
+                    $arr = array(
+                        'openid'        => $object->FromUserName,
+                        'create_time'   => time(),
+                    );
+                    $res = $this->conn->insert('serverAlert',$arr);
+                    if($res){
+                        //入库成功
+                        $content = "微信绑定成功!";
+                    }else{
+                        //入库失败
+                        $content = "微信绑定失败,请取消关注后重试或联系管理员!";
+                    }
                 }
                 break;
             case "unsubscribe":
-                $content = "取消关注";
+                //删除绑定
+                $this->conn->del("serverAlert","openid='" . $object->FromUserName . "'");
+                $content = "已解绑";
+                break;
+            case "SCAN":
+                $sql = "select * from serverAlert where openid='" . $object->FromUserName . "'";
+                $openidData = $this->conn->getOne($sql);
+                if($openidData){
+                    //已经绑定成功
+                    $content = "微信已绑定成功!";
+                }else{
+                    //需要重新绑定 插入数据
+                    $arr = array(
+                        'openid'        => $object->FromUserName,
+                        'create_time'   => time(),
+                    );
+                    $res = $this->conn->insert('serverAlert',$arr);
+                    if($res){
+                        //入库成功
+                        $content = "微信绑定成功!";
+                    }else{
+                        //入库失败
+                        $content = "微信绑定失败,请取消关注后重试或联系管理员!";
+                    }
+                }
                 break;
             default:
                 $content = "receive a new event: ".$object->Event;
@@ -99,6 +126,9 @@ class wechatCallbackapi{
                 foreach ($all_res as $k => $v){
                     $this->weCore->sendTempMsg($v['openid'],$serverAlert);
                 }
+                break;
+            case "2":
+                $content = $this->weCore->getAccessToken();
                 break;
             default:
                 $content = "当前时间：" . date("Y-m-d H:i:s", time());
